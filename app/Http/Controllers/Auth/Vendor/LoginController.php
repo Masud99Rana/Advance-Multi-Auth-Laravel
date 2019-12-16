@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Auth\Vendor;
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 
+use Auth;
+
 class LoginController extends Controller
 {
     /*
@@ -25,7 +27,7 @@ class LoginController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = '/home';
+    protected $redirectTo = 'vendor/home';
 
     /**
      * Create a new controller instance.
@@ -34,6 +36,19 @@ class LoginController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('guest')->except('logout');
+        $this->middleware('guest:vendor')->except('logout');
+    }
+
+    // guard for Vendor 
+    protected function guard()
+    {
+        return Auth::guard('vendor');
+    }
+
+
+    // show login form 
+    public function showLoginForm()
+    {
+        return view('vendor.auth.login');
     }
 }
