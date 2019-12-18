@@ -2,11 +2,21 @@
 
 namespace App\Http\Controllers\Auth\Vendor;
 
-use App\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Auth\RegistersUsers;
+
+use App\Model\Vendor\Vendor;
+use App\Mail\verifyVendorEmail;
+use Carbon\Carbon;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
+use Mail;
+use Session;
+use Auth;
 
 class RegisterController extends Controller
 {
@@ -28,7 +38,7 @@ class RegisterController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = 'vendor/home';
+    protected $redirectTo = 'v/home';
 
     /**
      * Create a new controller instance.
@@ -38,6 +48,17 @@ class RegisterController extends Controller
     public function __construct()
     {
         $this->middleware('guest:vendor');
+    }
+
+    //guard for Admin 
+    protected function guard()
+    {
+        return Auth::guard('guest:vendor');
+    }
+
+    public function showRegistrationForm()
+    {
+        return view('vendor.auth.register');
     }
 
     /**
@@ -55,18 +76,54 @@ class RegisterController extends Controller
         ]);
     }
 
-    /**
+   /**
      * Create a new user instance after a valid registration.
-     *
-     * @param  array  $data
-     * @return \App\User
      */
     protected function create(array $data)
     {
-        return User::create([
+        $vendor = Vendor::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'verifyToken' => Str::random(40)
         ]);
+
+        $thisVendor = Vendor::findorFail($vendor->id);
+        $this->sendEmail($thisVendor);
+        
+        Session::flash('status','Registered! but verify your email to active your account');
+
+        return $vendor;
+
+    }
+
+    /**
+     * Handle a registration request for the application.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function register(Request $request)
+    {
+        $this->validator($request->all())->validate();
+
+        event(new Registered($user = $this->create($request->all())));
+
+        $this->guard()->login($user);
+        return redirect(route('vendor.verification.notice'));//if any other view
+
+        return $this->registered($request, $user)
+                        ?: redirect($this->redirectPath());
+    }
+
+    public function sendEmail($thisVendor){
+        
+        $verificationUrl = URL::temporarySignedRoute(
+                'vendor.verification.verify',
+                Carbon::now()->addMinutes(60),
+                ['id' => $thisVendor->id]
+            );
+
+        Mail::to($thisVendor['email'])->send(new verifyVendorEmail($verificationUrl));
     }
 }

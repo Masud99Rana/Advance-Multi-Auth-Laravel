@@ -13,5 +13,5 @@ Auth::routesForVendor();
 Route::namespace('Vendor')->prefix('v')->group(function () {
     // Controllers Within The "App\Http\Controllers\Vendor" Namespace
 
-	Route::get('/home', 'HomeController@index')->name('vendor.home');
+	Route::get('/home', 'HomeController@index')->name('vendor.home')->middleware('userIsVerified');
 });

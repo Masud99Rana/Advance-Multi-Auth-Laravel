@@ -1,5 +1,6 @@
 <?php
 
+
 /*
 |--------------------------------------------------------------------------
 | Web User Routes
@@ -16,10 +17,11 @@ Route::get('/', function () {
 
 Auth::routes();
 
+
 Route::namespace('User')->group(function () {
     // Controllers Within The "App\Http\Controllers\User" Namespace
 
-	Route::get('/home', 'HomeController@index')->name('user.home');
+	Route::get('/home', 'HomeController@index')->name('user.home')->middleware('userIsVerified');
 });
 
 

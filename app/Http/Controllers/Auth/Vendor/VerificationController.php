@@ -5,6 +5,14 @@ namespace App\Http\Controllers\Auth\Vendor;
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\VerifiesEmails;
 
+
+use App\Mail\verifyVendorEmail;
+use Carbon\Carbon;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\Events\Verified;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 class VerificationController extends Controller
 {
     /*
@@ -25,7 +33,7 @@ class VerificationController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = 'vendor/home';
+    protected $redirectTo = 'v/home';
 
     /**
      * Create a new controller instance.
@@ -38,4 +46,58 @@ class VerificationController extends Controller
         $this->middleware('signed')->only('verify');
         $this->middleware('throttle:6,1')->only('verify', 'resend');
     }
+   
+    // show verify info page
+    public function show(Request $request)
+    {
+        return $request->user()->hasVerifiedEmail()
+                        ? redirect($this->redirectPath())
+                        : view('vendor.auth.verify');
+    }
+
+    /**
+     * Mark the authenticated user's email address as verified.
+     */
+    public function verify(Request $request)
+    {   
+        if ($request->route('id') != $request->user()->getKey()) {
+            throw new AuthorizationException;
+        }
+
+        if ($request->user()->hasVerifiedEmail()) {
+            return redirect($this->redirectPath());
+        }
+
+        if ($request->user()->markEmailAsVerified()) {
+            event(new Verified($request->user()));
+        }
+
+        return redirect($this->redirectPath())->with('verified', true);
+    }
+
+    /**
+     * Resend the email verification notification.
+     */
+    public function resend(Request $request)
+    {   
+        // dd($request->user()->id);
+        // dd($request->user()->getKey());
+        // return "HEllo";
+
+        if ($request->user()->hasVerifiedEmail()) {
+            return redirect($this->redirectPath());
+        }
+
+        $verificationUrl = URL::temporarySignedRoute(
+                'vendor.verification.verify',
+                Carbon::now()->addMinutes(60),
+                ['id' => $request->user()->id]
+            );
+
+        Mail::to($request->user()->email)->send(new verifyVendorEmail($verificationUrl));
+
+        return back()->with('resent', true);
+    }
+
+
 }

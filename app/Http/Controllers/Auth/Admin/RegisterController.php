@@ -2,11 +2,21 @@
 
 namespace App\Http\Controllers\Auth\Admin;
 
-use App\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Auth\RegistersUsers;
+
+use App\Model\Admin\Admin;
+use App\Mail\verifyAdminEmail;
+use Carbon\Carbon;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
+use Mail;
+use Session;
+use Auth;
 
 class RegisterController extends Controller
 {
@@ -21,7 +31,7 @@ class RegisterController extends Controller
     |
     */
 
-    use RegistersUsers;
+    use RegistersUsers ;
 
     /**
      * Where to redirect users after registration.
@@ -39,6 +49,19 @@ class RegisterController extends Controller
     {
         $this->middleware('guest:admin');
     }
+
+    //guard for Admin 
+    protected function guard()
+    {
+        return Auth::guard('admin');
+    }
+
+    // user registration form
+    public function showRegistrationForm()
+    {
+        return view('admin.auth.register');
+    }
+
 
     /**
      * Get a validator for an incoming registration request.
@@ -59,14 +82,52 @@ class RegisterController extends Controller
      * Create a new user instance after a valid registration.
      *
      * @param  array  $data
-     * @return \App\User
      */
     protected function create(array $data)
     {
-        return User::create([
+        $admin = Admin::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'verifyToken' => Str::random(40)
         ]);
+
+        $thisAdmin = Admin::findorFail($admin->id);
+        $this->sendEmail($thisAdmin);
+        
+        Session::flash('status','Registered! but verify your email to active your account');
+
+        return $admin;
+
     }
+
+    /**
+     * Handle a registration request for the application.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function register(Request $request)
+    {
+        $this->validator($request->all())->validate();
+
+        event(new Registered($user = $this->create($request->all())));
+        // dd("Hello");
+        $this->guard()->login($user);
+        return redirect(route('admin.verification.notice'));//if any other view
+
+        return $this->registered($request, $user)
+                        ?: redirect($this->redirectPath());
+    }
+
+    public function sendEmail($thisAdmin){
+        
+        $verificationUrl = URL::temporarySignedRoute(
+                'admin.verification.verify',
+                Carbon::now()->addMinutes(60),
+                ['id' => $thisAdmin->id]
+            );
+        Mail::to($thisAdmin['email'])->send(new verifyAdminEmail($verificationUrl));
+    }
+
 }

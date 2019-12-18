@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Auth\Vendor;
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\SendsPasswordResetEmails;
 
+
+use Illuminate\Support\Facades\Password;
+
 class ForgotPasswordController extends Controller
 {
     /*
@@ -28,5 +31,16 @@ class ForgotPasswordController extends Controller
     public function __construct()
     {
         $this->middleware('guest:vendor');
+    }
+
+    //show request form
+    public function showLinkRequestForm()
+    {
+        return view('vendor.auth.passwords.email');
+    }
+
+    public function broker()
+    {
+        return Password::broker('vendors');//provider name vendors
     }
 }

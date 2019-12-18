@@ -26,7 +26,7 @@ class RedirectIfAuthenticated
                 
             case 'vendor':
                 if (Auth::guard($guard)->check()) {
-                    return redirect('vendor/home');
+                    return redirect('v/home');
                 }
                 break;
             

@@ -1,0 +1,1 @@
+To very Email Click here <a href="{{$verificationUrl}}">Click</a>

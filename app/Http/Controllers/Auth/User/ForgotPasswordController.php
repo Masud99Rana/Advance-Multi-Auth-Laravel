@@ -28,5 +28,13 @@ class ForgotPasswordController extends Controller
     public function __construct()
     {
         $this->middleware('guest');
+        // $this->middleware('throttle:1,1')->only('verify', 'resend');
     }
+
+    //Display the form to request a password reset link.
+    public function showLinkRequestForm()
+    {
+        return view('user.auth.passwords.email');
+    }
+
 }
